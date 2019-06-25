@@ -1,15 +1,19 @@
 <template>
   <div class="login-wrap">
-    <el-form class="login-form" ref="form" :model="sizeForm"  size="mini">
+    <el-form class="login-form" ref="form" :model="sizeForm" :rules="rules" size="mini">
       <img src="../../assets/logo_index.png" alt="">
-      <el-form-item >
+      <el-form-item  prop="mobile">
         <el-input  v-model="sizeForm.mobile" placeholder="手机号"></el-input>
       </el-form-item>
-      <el-form-item >
+      <el-form-item  prop="code">
         <el-input class="aaa" v-model="sizeForm.code" placeholder="验证码"></el-input>
-         <el-button class="bbb" @click="handleSendCode">发送验证码</el-button>
-      </el-form-item>
-      <input  type="radio"> 我已阅读用户协议和隐私条款
+         <el-button class="bbb" @click="showGeetest"
+         :disabled ="!!codeTimer"
+         >{{ codeTimer ? `剩余${codeTime}秒` : "获取验证码"}}</el-button>
+      </el-form-item >
+      <el-form-item  prop="agree">
+       <el-checkbox v-model="sizeForm.agree">我已阅读并同意<a href="#">用户协议</a>和<a href="#">隐私条款</a></el-checkbox>
+       </el-form-item >
       <el-form-item>
 
         <el-button class="ccc" type="primary" @click="handleLogin" >登录</el-button>
@@ -28,12 +32,39 @@ export default {
     return {
       sizeForm: {
         mobile: '',
-        code: ''
-      }
+        code: '',
+        agree: ''
+      },
+      rules: {
+        mobile: [
+          { required: true, message: '清输入验证码', trigger: 'blur' },
+          { pattern: /\d{11}/, message: '长度 6 个字符', trigger: 'blur' }
+        ],
+        code: [
+          { required: true, message: '清输入验证码', trigger: 'blur' },
+          { pattern: /\d{6}/, message: '长度 6 个字符', trigger: 'blur' }
+        ],
+        agree: [
+          { required: true, message: '未同意协议' },
+          { pattern: /true/, message: '未同意协议' }
+        ]
+      },
+      codeTimer: null,
+      codeTime: 20
+
     };
   },
   methods: {
     handleLogin () {
+      this.$refs['form'].validate(valid => {
+        if (!valid) {
+
+        }
+      });
+      this.subimiLogin();
+    },
+
+    subimiLogin () {
       const { mobile, code } = this.sizeForm;
       axios({
         method: 'POST',
@@ -56,7 +87,16 @@ export default {
           this.$message.error('登录失败，手机号或验证码错误');
         });
     },
+
     handleSendCode () {
+      this.$refs['form'].validateField('mobile', errorMessage => {
+        if (errorMessage) {
+          return;
+        }
+        this.showGeetest();
+      });
+    },
+    showGeetest () {
       const { mobile } = this.sizeForm;
       axios({
         method: 'GET',
@@ -71,11 +111,11 @@ export default {
           offline: !data.success,
           new_captcha: data.new_captcha,
           product: 'bind'
-        }, function (captchaObj) {
+        }, (captchaObj) => {
           // console.log(captchaObj);
           captchaObj.onReady(function () {
             captchaObj.verify();
-          }).onSuccess(function () {
+          }).onSuccess(() => {
             // console.log(captchaObj.getValidate())
             const { geetest_challenge: challenge,
               geetest_seccode: seccode,
@@ -90,13 +130,24 @@ export default {
                 seccode
               }
             }).then((res) => {
-              console.log(res.data);
+              this.codedown();
             });
-          }).onError(function () {
+          }).onError(() => {
           });
         });
       });
+    },
+    codedown () {
+      this.codeTimer = window.setInterval(() => {
+        this.codeTime--;
+        if (this.codeTime <= 0) {
+          window.clearInterval(this.codeTimer);
+          this.codeTime = 10;
+          this.codeTimer = null;
+        }
+      }, 1000);
     }
+
   }
 };
 </script>
