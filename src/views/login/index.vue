@@ -12,7 +12,7 @@
       <input  type="radio"> 我已阅读用户协议和隐私条款
       <el-form-item>
 
-        <el-button class="ccc" type="primary" @click="onSubmit" >登录</el-button>
+        <el-button class="ccc" type="primary" @click="handleLogin" >登录</el-button>
         <el-button class="ccc">取消</el-button>
       </el-form-item>
     </el-form>
@@ -21,7 +21,7 @@
 
 <script>
 import axios from 'axios';
-
+import '@/vendor/gt';
 export default {
   name: 'AppLogin',
   data () {
@@ -33,8 +33,28 @@ export default {
     };
   },
   methods: {
-    onSubmit () {
-      console.log('submit!');
+    handleLogin () {
+      const { mobile, code } = this.sizeForm;
+      axios({
+        method: 'POST',
+        url: `http://ttapi.research.itcast.cn/mp/v1_0/authorizations`,
+        data: {
+          mobile,
+          code
+        }
+      }).then(res => {
+        console.log(res.data);
+        this.$message({
+          message: '登录成功',
+          type: 'success'
+        });
+        this.$router.push({
+          name: 'home'
+        });
+      })
+        .catch((e) => {
+          this.$message.error('登录失败，手机号或验证码错误');
+        });
     },
     handleSendCode () {
       const { mobile } = this.sizeForm;
@@ -43,7 +63,38 @@ export default {
         url: `http://ttapi.research.itcast.cn/mp/v1_0/captchas/${mobile}`
 
       }).then((res) => {
-        console.log(res.data);
+        // console.log(res.data)
+        const { data } = res.data;
+        window.initGeetest({
+          gt: data.gt,
+          challenge: data.challenge,
+          offline: !data.success,
+          new_captcha: data.new_captcha,
+          product: 'bind'
+        }, function (captchaObj) {
+          // console.log(captchaObj);
+          captchaObj.onReady(function () {
+            captchaObj.verify();
+          }).onSuccess(function () {
+            // console.log(captchaObj.getValidate())
+            const { geetest_challenge: challenge,
+              geetest_seccode: seccode,
+              geetest_validate: validate
+            } = captchaObj.getValidate();
+            axios({
+              method: 'GET',
+              url: `http://ttapi.research.itcast.cn/mp/v1_0/sms/codes/${mobile}`,
+              params: {
+                challenge,
+                validate,
+                seccode
+              }
+            }).then((res) => {
+              console.log(res.data);
+            });
+          }).onError(function () {
+          });
+        });
       });
     }
   }
