@@ -68,12 +68,14 @@ export default {
       const { mobile, code } = this.sizeForm;
       axios({
         method: 'POST',
-        url: `http://ttapi.research.itcast.cn/mp/v1_0/authorizations`,
+        url: `http://toutiao.course.itcast.cn/mp/v1_0/authorizations`,
         data: {
           mobile,
           code
         }
       }).then(res => {
+        const userInfo = res.data.data;
+        window.localStorage.setItem('user_info', JSON.stringify(userInfo));
         console.log(res.data);
         this.$message({
           message: '登录成功',
