@@ -7,7 +7,7 @@
       </el-form-item>
       <el-form-item  prop="code">
         <el-input class="aaa" v-model="sizeForm.code" placeholder="验证码"></el-input>
-         <el-button class="bbb" @click="showGeetest"
+         <el-button class="bbb" @click="handleSendCode"
          :disabled ="!!codeTimer"
          >{{ codeTimer ? `剩余${codeTime}秒` : "获取验证码"}}</el-button>
       </el-form-item >
