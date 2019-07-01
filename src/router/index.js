@@ -1,9 +1,11 @@
 import Vue from 'vue';
 import VueRouter from 'vue-router';
+import Nprogress from 'nprogress';
+import { getUser } from '@/utils/auth';
 
 Vue.use(VueRouter);
 
-export default new VueRouter({
+const router = new VueRouter({
   routes: [
     // {
     //   name: 'home',
@@ -25,8 +27,13 @@ export default new VueRouter({
       children: [
         {
           name: 'home',
-          path: '',
+          path: '/home',
           component: () => import('@/views/home')
+        },
+        {
+          name: 'article',
+          path: '/article',
+          component: () => import('@/views/article')
         }
       ]
 
@@ -34,3 +41,34 @@ export default new VueRouter({
 
   ]
 });
+
+router.beforeEach((to, from, next) => {
+  Nprogress.start();
+  // console.log(to);
+  // const userInfo = window.localStorage.getItem('user_info')
+  const userInfo = getUser();
+  if (to.path !== '/login') {
+    if (!userInfo) {
+      if (from.path === '/login') {
+        Nprogress.done();
+      }
+
+      next({ name: 'login' });
+    } else {
+      next();
+    }
+  } else {
+    if (!userInfo) {
+      next();
+    } else {
+      // next(false);
+      window.location.href = '/#/';
+      window.location.reload();
+    }
+  }
+});
+router.afterEach((to, from) => {
+  Nprogress.done();
+  // console.log(to);
+});
+export default router;
