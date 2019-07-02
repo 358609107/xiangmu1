@@ -1,17 +1,58 @@
 <template>
   <div>
-    <el-card class="filter-card">
-      <div slot="header" class="clearfix">
-        <span>数据筛选</span>
-        <el-button style="float:right;padding:3px 0" type="text">操作按钮</el-button>
-      </div>
-      <div v-for="o in 4" :key="o" class="text item">{{'列表内容'+o}}</div>
-    </el-card>
+     <el-form ref="filterPrams" :model="filterPrams" label-width="80px">
+         <el-form-item label="状态">
+    <el-radio-group v-model="filterPrams.status">
+      <el-radio label="全部"></el-radio>
+      <el-radio
+      v-for="(item,index) in statTypes"
+      :key="item.lable"
+      :label="index"
+      >{{item.label}}</el-radio>
+    </el-radio-group>
+  </el-form-item>
+   <el-form-item label="频道">
+    <el-select
+     v-model="filterPrams.channel_id"
+    placeholder="请选择活动区域"
+     clearable
+    >
+      <el-option
+      v-for="item in channels"
+      :key="item.id"
+      :label="item.name"
+      :value="item.id"
+      ></el-option>
+
+    </el-select>
+  </el-form-item>
+
+  <el-form-item label="时间">
+   <el-date-picker
+   value-format="yyyy-MM-dd"
+      v-model="range_date"
+      type="daterange"
+      range-separator="至"
+      start-placeholder="开始日期"
+      end-placeholder="结束日期"
+      @change="handleDateChange"
+      >
+    </el-date-picker>
+  </el-form-item>
+  <el-form-item label="活动形式">
+    <el-input type="textarea" v-model="filterPrams.desc"></el-input>
+  </el-form-item>
+  <el-form-item>
+    <el-button type="primary"
+     @click="onSubmit"
+     :loading="loading"
+     >查询</el-button>
+    <el-button>取消</el-button>
+  </el-form-item>
+</el-form>
+
+     <!-- 内容列表 -->
     <el-card class="box-card">
-      <div slot="headr" class="clearfix">
-        <span>一共有xxx条数据</span>
-        <el-button style="float:right;padding:3px 0" type="text">操作按钮</el-button>
-      </div>
       <el-table
        v-loading="loading"
          element-loading-text="拼命加载中"
@@ -53,9 +94,14 @@
         label="操作"
         width="180"
         >
-        <template >
+        <template slot-scope="scope">
           <el-button size="mini" type="primary" plain>修改</el-button>
-          <el-button size="mini" type="danger" plain>删除</el-button>
+          <el-button
+          size="mini"
+          type="danger"
+          plain
+          @click="handleDelete(scope.row)"
+          >删除</el-button>
 
         </template>
       </el-table-column>
@@ -68,6 +114,7 @@
       分页组件会根据每页大小和总记录数进行分页
      -->
     <el-pagination
+    :current-page="page"
      background
      layout="prev,pager,next"
      :page-size="pageSize"
@@ -88,6 +135,8 @@ export default {
   name: 'ArticleList',
   data () {
     return {
+      range_date: '',
+      channels: [],
       tableData: [],
       statTypes: [
         {
@@ -114,33 +163,95 @@ export default {
       pageSize: 10, // 每页大小
       totalCount: 0, // 总数据量
       page: 1,
-      loading: false
+      loading: false,
+      filterPrams: {
+        status: '', // 文章状态
+        channel_id: '', // 频道ID
+        begin_pubdate: '', // 开始时间
+        end_pubdate: '' // 结束时间
+
+      }
     };
   },
   created () {
     this.loadAriticles();
+    this.loadChannels();
   },
   methods: {
-    async loadAriticles () {
-      this.loading = true;
-      const data = await Axios({
-        method: 'GET',
-        url: 'http://ttapi.research.itcast.cn/mp/v1_0/articles',
-        params: {
-          page: this.page,
-          per_page: this.pageSize
 
+    async handleDelete (item) {
+      try {
+        // console.log(item.id.toString());
+        await this.$confirm('此操作将永久删除该文件, 是否继续?', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        });
+
+        await Axios({
+          method: 'DELETE',
+          url: `http://ttapi.research.itcast.cn/mp/v1_0/articles/${item.id}`
+        });
+        this.loadAriticles();
+      } catch (err) {
+        this.$message.error('删除失败');
+      }
+    },
+    onSubmit () {
+      this.page = 1;
+      this.loadAriticles();
+    },
+    async loadAriticles () {
+      try {
+        this.loading = true;
+        const filterDate = {};
+        for (let key in this.filterPrams) {
+          const item = this.filterPrams[key];
+          if (item !== null && item !== undefined && item !== '') {
+            filterDate[key] = item;
+          }
         }
-      });
-      // console.log(data.results);
-      this.tableData = data.results;
-      this.totalCount = data.total_count;
-      this.loading = false;
+        const data = await Axios({
+          method: 'GET',
+          url: 'http://ttapi.research.itcast.cn/mp/v1_0/articles',
+          params: {
+            page: this.page,
+            per_page: this.pageSize,
+            ...filterDate
+
+          }
+        });
+        // console.log(data);
+        this.tableData = data.results;
+        this.totalCount = data.total_count;
+        this.loading = false;
+      } catch (err) {
+        this.$message.error('加载文章列表失败', err);
+      }
     },
     handleCurrentChange (page) {
       console.log(page);
       this.page = page;
       this.loadAriticles();
+    },
+    async loadChannels () {
+      try {
+        const data = await Axios({
+          method: 'GET',
+          url: 'http://ttapi.research.itcast.cn/mp/v1_0/channels'
+        });
+
+        this.channels = data.channels;
+        // console.log(this.channels)
+      } catch (err) {
+        console.log(err);
+        this.$message.error('获取频道列表失败');
+      }
+    },
+    handleDateChange (value) {
+      console.log(value);
+      this.filterPrams.begin_pubdate = value[0];
+      this.filterPrams.end_pubdate = value[1];
     }
 
   }

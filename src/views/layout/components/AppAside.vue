@@ -16,7 +16,7 @@
           <i class="el-icon-location"></i>
           <span>内容管理</span>
         </template>
-          <el-menu-item index="1-1" >
+          <el-menu-item index="1-1" @click.native="fabu">
         <i class="el-icon-menu"></i>
         <span slot="title">发布文章</span>
       </el-menu-item  >
@@ -82,6 +82,11 @@ export default {
     tiaoZhuan () {
       this.$router.push({
         name: 'article'
+      });
+    },
+    fabu () {
+      this.$router.push({
+        name: 'publish'
       });
     }
   }
